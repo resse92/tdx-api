@@ -1,0 +1,2057 @@
+{
+  "components": {
+    "schemas": {
+      "BatchSymbolsRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "symbols": {
+            "items": {
+              "$ref": "#/components/schemas/Symbol"
+            },
+            "minItems": 1,
+            "type": "array"
+          }
+        },
+        "required": [
+          "symbols"
+        ],
+        "type": "object"
+      },
+      "ErrorEnvelope": {
+        "properties": {
+          "error": {
+            "properties": {
+              "code": {
+                "type": "string"
+              },
+              "details": {},
+              "message": {
+                "type": "string"
+              },
+              "request_id": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "code",
+              "message"
+            ],
+            "type": "object"
+          }
+        },
+        "required": [
+          "error"
+        ],
+        "type": "object"
+      },
+      "SuccessEnvelope": {
+        "properties": {
+          "data": {
+            "description": "仅包含沪深市场数据"
+          },
+          "meta": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "data"
+        ],
+        "type": "object"
+      },
+      "Symbol": {
+        "additionalProperties": false,
+        "properties": {
+          "code": {
+            "examples": [
+              "000001.SZ",
+              "600519.SH"
+            ],
+            "pattern": "^[0-9]{6}\\.(SH|SZ)$",
+            "type": "string"
+          }
+        },
+        "required": [
+          "code"
+        ],
+        "type": "object"
+      }
+    }
+  },
+  "info": {
+    "description": "证券代码使用 000001.SZ 或 600519.SH 格式；全市场接口使用 market=0（深圳）或 market=1（上海）。",
+    "title": "沪深股票行情 API",
+    "version": "1.0.0"
+  },
+  "openapi": "3.0.3",
+  "paths": {
+    "/api/v1/indexes/bars": {
+      "get": {
+        "operationId": "stock.index.bars",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "code",
+            "required": true,
+            "schema": {
+              "examples": [
+                "000001.SZ",
+                "600519.SH"
+              ],
+              "pattern": "^[0-9]{6}\\.(SH|SZ)$",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "period",
+            "required": false,
+            "schema": {
+              "default": "daily",
+              "enum": [
+                "1m",
+                "5m",
+                "15m",
+                "30m",
+                "1h",
+                "daily",
+                "weekly",
+                "monthly",
+                "quarterly",
+                "yearly"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "maximum": 4294967295,
+              "minimum": 0,
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "maximum": 1000,
+              "minimum": 1,
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessEnvelope"
+                }
+              }
+            },
+            "description": "请求成功"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "参数错误"
+          },
+          "502": {
+            "description": "上游不可用"
+          },
+          "504": {
+            "description": "上游超时"
+          }
+        },
+        "summary": "查询指数 K 线"
+      }
+    },
+    "/api/v1/mac/boards": {
+      "get": {
+        "operationId": "mac.boards",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "maximum": 1000,
+              "minimum": 1,
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessEnvelope"
+                }
+              }
+            },
+            "description": "请求成功"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "参数错误"
+          },
+          "502": {
+            "description": "上游不可用"
+          },
+          "504": {
+            "description": "上游超时"
+          }
+        },
+        "summary": "查询 MAC 板块列表"
+      }
+    },
+    "/api/v1/mac/boards/members": {
+      "get": {
+        "operationId": "mac.board.members",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "board_symbol",
+            "required": true,
+            "schema": {
+              "pattern": "^[A-Za-z0-9._-]{1,32}$",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "maximum": 1000,
+              "minimum": 1,
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessEnvelope"
+                }
+              }
+            },
+            "description": "请求成功"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "参数错误"
+          },
+          "502": {
+            "description": "上游不可用"
+          },
+          "504": {
+            "description": "上游超时"
+          }
+        },
+        "summary": "查询 MAC 板块成分"
+      }
+    },
+    "/api/v1/mac/boards/quotes": {
+      "get": {
+        "operationId": "mac.board.quotes",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "board_symbol",
+            "required": true,
+            "schema": {
+              "pattern": "^[A-Za-z0-9._-]{1,32}$",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "maximum": 1000,
+              "minimum": 1,
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessEnvelope"
+                }
+              }
+            },
+            "description": "请求成功"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "参数错误"
+          },
+          "502": {
+            "description": "上游不可用"
+          },
+          "504": {
+            "description": "上游超时"
+          }
+        },
+        "summary": "查询 MAC 板块成分行情"
+      }
+    },
+    "/api/v1/mac/monitor": {
+      "get": {
+        "operationId": "mac.monitor",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "market",
+            "required": true,
+            "schema": {
+              "description": "0=深圳，1=上海",
+              "enum": [
+                0,
+                1
+              ],
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "maximum": 1000,
+              "minimum": 1,
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessEnvelope"
+                }
+              }
+            },
+            "description": "请求成功"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "参数错误"
+          },
+          "502": {
+            "description": "上游不可用"
+          },
+          "504": {
+            "description": "上游超时"
+          }
+        },
+        "summary": "查询 MAC 市场监控"
+      }
+    },
+    "/api/v1/mac/symbols/auction": {
+      "get": {
+        "operationId": "mac.auction",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "code",
+            "required": true,
+            "schema": {
+              "examples": [
+                "000001.SZ",
+                "600519.SH"
+              ],
+              "pattern": "^[0-9]{6}\\.(SH|SZ)$",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "maximum": 1000,
+              "minimum": 1,
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessEnvelope"
+                }
+              }
+            },
+            "description": "请求成功"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "参数错误"
+          },
+          "502": {
+            "description": "上游不可用"
+          },
+          "504": {
+            "description": "上游超时"
+          }
+        },
+        "summary": "查询 MAC 集合竞价"
+      }
+    },
+    "/api/v1/mac/symbols/bars": {
+      "get": {
+        "operationId": "mac.symbol.bars",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "code",
+            "required": true,
+            "schema": {
+              "examples": [
+                "000001.SZ",
+                "600519.SH"
+              ],
+              "pattern": "^[0-9]{6}\\.(SH|SZ)$",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "period",
+            "required": false,
+            "schema": {
+              "default": "daily",
+              "enum": [
+                "1m",
+                "5m",
+                "15m",
+                "30m",
+                "1h",
+                "daily",
+                "weekly",
+                "monthly",
+                "quarterly",
+                "yearly"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "adjust",
+            "required": false,
+            "schema": {
+              "default": "none",
+              "enum": [
+                "none",
+                "forward",
+                "backward"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "maximum": 4294967295,
+              "minimum": 0,
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "maximum": 1000,
+              "minimum": 1,
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessEnvelope"
+                }
+              }
+            },
+            "description": "请求成功"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "参数错误"
+          },
+          "502": {
+            "description": "上游不可用"
+          },
+          "504": {
+            "description": "上游超时"
+          }
+        },
+        "summary": "查询 MAC 统一 K 线"
+      }
+    },
+    "/api/v1/mac/symbols/boards": {
+      "get": {
+        "operationId": "mac.symbol.boards",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "code",
+            "required": true,
+            "schema": {
+              "examples": [
+                "000001.SZ",
+                "600519.SH"
+              ],
+              "pattern": "^[0-9]{6}\\.(SH|SZ)$",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessEnvelope"
+                }
+              }
+            },
+            "description": "请求成功"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "参数错误"
+          },
+          "502": {
+            "description": "上游不可用"
+          },
+          "504": {
+            "description": "上游超时"
+          }
+        },
+        "summary": "查询 MAC 证券所属板块"
+      }
+    },
+    "/api/v1/mac/symbols/capital-flow": {
+      "get": {
+        "operationId": "mac.capital-flow",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "code",
+            "required": true,
+            "schema": {
+              "examples": [
+                "000001.SZ",
+                "600519.SH"
+              ],
+              "pattern": "^[0-9]{6}\\.(SH|SZ)$",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessEnvelope"
+                }
+              }
+            },
+            "description": "请求成功"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "参数错误"
+          },
+          "502": {
+            "description": "上游不可用"
+          },
+          "504": {
+            "description": "上游超时"
+          }
+        },
+        "summary": "查询 MAC 资金流向"
+      }
+    },
+    "/api/v1/mac/symbols/info": {
+      "get": {
+        "operationId": "mac.symbol.info",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "code",
+            "required": true,
+            "schema": {
+              "examples": [
+                "000001.SZ",
+                "600519.SH"
+              ],
+              "pattern": "^[0-9]{6}\\.(SH|SZ)$",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessEnvelope"
+                }
+              }
+            },
+            "description": "请求成功"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "参数错误"
+          },
+          "502": {
+            "description": "上游不可用"
+          },
+          "504": {
+            "description": "上游超时"
+          }
+        },
+        "summary": "查询 MAC 股票摘要"
+      }
+    },
+    "/api/v1/mac/symbols/quote": {
+      "get": {
+        "operationId": "mac.quote",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "code",
+            "required": true,
+            "schema": {
+              "examples": [
+                "000001.SZ",
+                "600519.SH"
+              ],
+              "pattern": "^[0-9]{6}\\.(SH|SZ)$",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "date",
+            "required": false,
+            "schema": {
+              "description": "YYYYMMDD；部分实时接口可省略",
+              "maximum": 21001231,
+              "minimum": 19900101,
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessEnvelope"
+                }
+              }
+            },
+            "description": "请求成功"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "参数错误"
+          },
+          "502": {
+            "description": "上游不可用"
+          },
+          "504": {
+            "description": "上游超时"
+          }
+        },
+        "summary": "查询 MAC 股票快照"
+      }
+    },
+    "/api/v1/mac/symbols/ticks": {
+      "get": {
+        "operationId": "mac.ticks",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "code",
+            "required": true,
+            "schema": {
+              "examples": [
+                "000001.SZ",
+                "600519.SH"
+              ],
+              "pattern": "^[0-9]{6}\\.(SH|SZ)$",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "date",
+            "required": false,
+            "schema": {
+              "description": "YYYYMMDD；部分实时接口可省略",
+              "maximum": 21001231,
+              "minimum": 19900101,
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "days",
+            "required": true,
+            "schema": {
+              "maximum": 30,
+              "minimum": 1,
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessEnvelope"
+                }
+              }
+            },
+            "description": "请求成功"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "参数错误"
+          },
+          "502": {
+            "description": "上游不可用"
+          },
+          "504": {
+            "description": "上游超时"
+          }
+        },
+        "summary": "查询 MAC 多日分时"
+      }
+    },
+    "/api/v1/mac/symbols/transactions": {
+      "get": {
+        "operationId": "mac.transactions",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "code",
+            "required": true,
+            "schema": {
+              "examples": [
+                "000001.SZ",
+                "600519.SH"
+              ],
+              "pattern": "^[0-9]{6}\\.(SH|SZ)$",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "date",
+            "required": false,
+            "schema": {
+              "description": "YYYYMMDD；部分实时接口可省略",
+              "maximum": 21001231,
+              "minimum": 19900101,
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "maximum": 1000,
+              "minimum": 1,
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessEnvelope"
+                }
+              }
+            },
+            "description": "请求成功"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "参数错误"
+          },
+          "502": {
+            "description": "上游不可用"
+          },
+          "504": {
+            "description": "上游超时"
+          }
+        },
+        "summary": "查询 MAC 成交"
+      }
+    },
+    "/api/v1/market/announcement": {
+      "get": {
+        "operationId": "stock.announcement",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessEnvelope"
+                }
+              }
+            },
+            "description": "请求成功"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "参数错误"
+          },
+          "502": {
+            "description": "上游不可用"
+          },
+          "504": {
+            "description": "上游超时"
+          }
+        },
+        "summary": "查询公告"
+      }
+    },
+    "/api/v1/market/exchange-announcement": {
+      "get": {
+        "operationId": "stock.exchange-announcement",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessEnvelope"
+                }
+              }
+            },
+            "description": "请求成功"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "参数错误"
+          },
+          "502": {
+            "description": "上游不可用"
+          },
+          "504": {
+            "description": "上游超时"
+          }
+        },
+        "summary": "查询交易所公告"
+      }
+    },
+    "/api/v1/stocks": {
+      "get": {
+        "operationId": "stock.list",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "market",
+            "required": true,
+            "schema": {
+              "description": "0=深圳，1=上海",
+              "enum": [
+                0,
+                1
+              ],
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "maximum": 4294967295,
+              "minimum": 0,
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "maximum": 1000,
+              "minimum": 1,
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessEnvelope"
+                }
+              }
+            },
+            "description": "请求成功"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "参数错误"
+          },
+          "502": {
+            "description": "上游不可用"
+          },
+          "504": {
+            "description": "上游超时"
+          }
+        },
+        "summary": "查询主市场证券列表"
+      }
+    },
+    "/api/v1/stocks/auction": {
+      "get": {
+        "operationId": "stock.auction",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "code",
+            "required": true,
+            "schema": {
+              "examples": [
+                "000001.SZ",
+                "600519.SH"
+              ],
+              "pattern": "^[0-9]{6}\\.(SH|SZ)$",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "maximum": 1000,
+              "minimum": 1,
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessEnvelope"
+                }
+              }
+            },
+            "description": "请求成功"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "参数错误"
+          },
+          "502": {
+            "description": "上游不可用"
+          },
+          "504": {
+            "description": "上游超时"
+          }
+        },
+        "summary": "查询集合竞价"
+      }
+    },
+    "/api/v1/stocks/bars": {
+      "get": {
+        "operationId": "stock.kline",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "code",
+            "required": true,
+            "schema": {
+              "examples": [
+                "000001.SZ",
+                "600519.SH"
+              ],
+              "pattern": "^[0-9]{6}\\.(SH|SZ)$",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "period",
+            "required": false,
+            "schema": {
+              "default": "daily",
+              "enum": [
+                "1m",
+                "5m",
+                "15m",
+                "30m",
+                "1h",
+                "daily",
+                "weekly",
+                "monthly",
+                "quarterly",
+                "yearly"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "adjust",
+            "required": false,
+            "schema": {
+              "default": "none",
+              "enum": [
+                "none",
+                "forward",
+                "backward"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "maximum": 4294967295,
+              "minimum": 0,
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "maximum": 1000,
+              "minimum": 1,
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessEnvelope"
+                }
+              }
+            },
+            "description": "请求成功"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "参数错误"
+          },
+          "502": {
+            "description": "上游不可用"
+          },
+          "504": {
+            "description": "上游超时"
+          }
+        },
+        "summary": "查询股票 K 线"
+      }
+    },
+    "/api/v1/stocks/count": {
+      "get": {
+        "operationId": "stock.count",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "market",
+            "required": true,
+            "schema": {
+              "description": "0=深圳，1=上海",
+              "enum": [
+                0,
+                1
+              ],
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessEnvelope"
+                }
+              }
+            },
+            "description": "请求成功"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "参数错误"
+          },
+          "502": {
+            "description": "上游不可用"
+          },
+          "504": {
+            "description": "上游超时"
+          }
+        },
+        "summary": "查询主市场证券数量"
+      }
+    },
+    "/api/v1/stocks/f10": {
+      "get": {
+        "operationId": "company.f10",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "code",
+            "required": true,
+            "schema": {
+              "examples": [
+                "000001.SZ",
+                "600519.SH"
+              ],
+              "pattern": "^[0-9]{6}\\.(SH|SZ)$",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessEnvelope"
+                }
+              }
+            },
+            "description": "请求成功"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "参数错误"
+          },
+          "502": {
+            "description": "上游不可用"
+          },
+          "504": {
+            "description": "上游超时"
+          }
+        },
+        "summary": "查询组合 F10"
+      }
+    },
+    "/api/v1/stocks/finance": {
+      "get": {
+        "operationId": "company.finance",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "code",
+            "required": true,
+            "schema": {
+              "examples": [
+                "000001.SZ",
+                "600519.SH"
+              ],
+              "pattern": "^[0-9]{6}\\.(SH|SZ)$",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessEnvelope"
+                }
+              }
+            },
+            "description": "请求成功"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "参数错误"
+          },
+          "502": {
+            "description": "上游不可用"
+          },
+          "504": {
+            "description": "上游超时"
+          }
+        },
+        "summary": "查询财务信息"
+      }
+    },
+    "/api/v1/stocks/index-info": {
+      "get": {
+        "operationId": "stock.index.info",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "code",
+            "required": true,
+            "schema": {
+              "examples": [
+                "000001.SZ",
+                "600519.SH"
+              ],
+              "pattern": "^[0-9]{6}\\.(SH|SZ)$",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessEnvelope"
+                }
+              }
+            },
+            "description": "请求成功"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "参数错误"
+          },
+          "502": {
+            "description": "上游不可用"
+          },
+          "504": {
+            "description": "上游超时"
+          }
+        },
+        "summary": "查询指数信息"
+      }
+    },
+    "/api/v1/stocks/index-momentum": {
+      "get": {
+        "operationId": "stock.index.momentum",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "code",
+            "required": true,
+            "schema": {
+              "examples": [
+                "000001.SZ",
+                "600519.SH"
+              ],
+              "pattern": "^[0-9]{6}\\.(SH|SZ)$",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessEnvelope"
+                }
+              }
+            },
+            "description": "请求成功"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "参数错误"
+          },
+          "502": {
+            "description": "上游不可用"
+          },
+          "504": {
+            "description": "上游超时"
+          }
+        },
+        "summary": "查询指数动量"
+      }
+    },
+    "/api/v1/stocks/orders/history": {
+      "get": {
+        "operationId": "stock.orders.history",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "code",
+            "required": true,
+            "schema": {
+              "examples": [
+                "000001.SZ",
+                "600519.SH"
+              ],
+              "pattern": "^[0-9]{6}\\.(SH|SZ)$",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "date",
+            "required": true,
+            "schema": {
+              "description": "YYYYMMDD；部分实时接口可省略",
+              "maximum": 21001231,
+              "minimum": 19900101,
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessEnvelope"
+                }
+              }
+            },
+            "description": "请求成功"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "参数错误"
+          },
+          "502": {
+            "description": "上游不可用"
+          },
+          "504": {
+            "description": "上游超时"
+          }
+        },
+        "summary": "查询历史委托"
+      }
+    },
+    "/api/v1/stocks/quote": {
+      "get": {
+        "operationId": "stock.quote",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "code",
+            "required": true,
+            "schema": {
+              "examples": [
+                "000001.SZ",
+                "600519.SH"
+              ],
+              "pattern": "^[0-9]{6}\\.(SH|SZ)$",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessEnvelope"
+                }
+              }
+            },
+            "description": "请求成功"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "参数错误"
+          },
+          "502": {
+            "description": "上游不可用"
+          },
+          "504": {
+            "description": "上游超时"
+          }
+        },
+        "summary": "查询单个主市场行情"
+      }
+    },
+    "/api/v1/stocks/quotes": {
+      "post": {
+        "operationId": "stock.quotes",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BatchSymbolsRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessEnvelope"
+                }
+              }
+            },
+            "description": "请求成功"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "参数错误"
+          },
+          "502": {
+            "description": "上游不可用"
+          },
+          "504": {
+            "description": "上游超时"
+          }
+        },
+        "summary": "批量查询主市场行情"
+      }
+    },
+    "/api/v1/stocks/sampling": {
+      "get": {
+        "operationId": "stock.sampling",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "code",
+            "required": true,
+            "schema": {
+              "examples": [
+                "000001.SZ",
+                "600519.SH"
+              ],
+              "pattern": "^[0-9]{6}\\.(SH|SZ)$",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessEnvelope"
+                }
+              }
+            },
+            "description": "请求成功"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "参数错误"
+          },
+          "502": {
+            "description": "上游不可用"
+          },
+          "504": {
+            "description": "上游超时"
+          }
+        },
+        "summary": "查询分时采样"
+      }
+    },
+    "/api/v1/stocks/ticks": {
+      "get": {
+        "operationId": "stock.tick",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "code",
+            "required": true,
+            "schema": {
+              "examples": [
+                "000001.SZ",
+                "600519.SH"
+              ],
+              "pattern": "^[0-9]{6}\\.(SH|SZ)$",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "maximum": 1000,
+              "minimum": 1,
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessEnvelope"
+                }
+              }
+            },
+            "description": "请求成功"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "参数错误"
+          },
+          "502": {
+            "description": "上游不可用"
+          },
+          "504": {
+            "description": "上游超时"
+          }
+        },
+        "summary": "查询当日分时"
+      }
+    },
+    "/api/v1/stocks/ticks/history": {
+      "get": {
+        "operationId": "stock.tick.history",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "code",
+            "required": true,
+            "schema": {
+              "examples": [
+                "000001.SZ",
+                "600519.SH"
+              ],
+              "pattern": "^[0-9]{6}\\.(SH|SZ)$",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "date",
+            "required": true,
+            "schema": {
+              "description": "YYYYMMDD；部分实时接口可省略",
+              "maximum": 21001231,
+              "minimum": 19900101,
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessEnvelope"
+                }
+              }
+            },
+            "description": "请求成功"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "参数错误"
+          },
+          "502": {
+            "description": "上游不可用"
+          },
+          "504": {
+            "description": "上游超时"
+          }
+        },
+        "summary": "查询历史分时"
+      }
+    },
+    "/api/v1/stocks/transactions": {
+      "get": {
+        "operationId": "stock.transactions",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "code",
+            "required": true,
+            "schema": {
+              "examples": [
+                "000001.SZ",
+                "600519.SH"
+              ],
+              "pattern": "^[0-9]{6}\\.(SH|SZ)$",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "maximum": 1000,
+              "minimum": 1,
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessEnvelope"
+                }
+              }
+            },
+            "description": "请求成功"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "参数错误"
+          },
+          "502": {
+            "description": "上游不可用"
+          },
+          "504": {
+            "description": "上游超时"
+          }
+        },
+        "summary": "查询当日成交"
+      }
+    },
+    "/api/v1/stocks/transactions/history": {
+      "get": {
+        "operationId": "stock.transactions.history",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "code",
+            "required": true,
+            "schema": {
+              "examples": [
+                "000001.SZ",
+                "600519.SH"
+              ],
+              "pattern": "^[0-9]{6}\\.(SH|SZ)$",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "date",
+            "required": true,
+            "schema": {
+              "description": "YYYYMMDD；部分实时接口可省略",
+              "maximum": 21001231,
+              "minimum": 19900101,
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "maximum": 1000,
+              "minimum": 1,
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessEnvelope"
+                }
+              }
+            },
+            "description": "请求成功"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "参数错误"
+          },
+          "502": {
+            "description": "上游不可用"
+          },
+          "504": {
+            "description": "上游超时"
+          }
+        },
+        "summary": "查询历史成交"
+      }
+    },
+    "/api/v1/stocks/unusual": {
+      "get": {
+        "operationId": "stock.unusual",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "market",
+            "required": true,
+            "schema": {
+              "description": "0=深圳，1=上海",
+              "enum": [
+                0,
+                1
+              ],
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "maximum": 1000,
+              "minimum": 1,
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessEnvelope"
+                }
+              }
+            },
+            "description": "请求成功"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "参数错误"
+          },
+          "502": {
+            "description": "上游不可用"
+          },
+          "504": {
+            "description": "上游超时"
+          }
+        },
+        "summary": "查询市场异动"
+      }
+    },
+    "/api/v1/stocks/volume-profile": {
+      "get": {
+        "operationId": "stock.volume-profile",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "code",
+            "required": true,
+            "schema": {
+              "examples": [
+                "000001.SZ",
+                "600519.SH"
+              ],
+              "pattern": "^[0-9]{6}\\.(SH|SZ)$",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessEnvelope"
+                }
+              }
+            },
+            "description": "请求成功"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "参数错误"
+          },
+          "502": {
+            "description": "上游不可用"
+          },
+          "504": {
+            "description": "上游超时"
+          }
+        },
+        "summary": "查询筹码分布"
+      }
+    },
+    "/api/v1/stocks/xdxr": {
+      "get": {
+        "operationId": "company.xdxr",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "code",
+            "required": true,
+            "schema": {
+              "examples": [
+                "000001.SZ",
+                "600519.SH"
+              ],
+              "pattern": "^[0-9]{6}\\.(SH|SZ)$",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessEnvelope"
+                }
+              }
+            },
+            "description": "请求成功"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "参数错误"
+          },
+          "502": {
+            "description": "上游不可用"
+          },
+          "504": {
+            "description": "上游超时"
+          }
+        },
+        "summary": "查询除权除息"
+      }
+    }
+  }
+}
