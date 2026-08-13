@@ -84,96 +84,6 @@
   },
   "openapi": "3.0.3",
   "paths": {
-    "/api/v1/indexes/bars": {
-      "get": {
-        "operationId": "stock.index.bars",
-        "parameters": [
-          {
-            "in": "query",
-            "name": "code",
-            "required": true,
-            "schema": {
-              "examples": [
-                "000001.SZ",
-                "600519.SH"
-              ],
-              "pattern": "^[0-9]{6}\\.(SH|SZ)$",
-              "type": "string"
-            }
-          },
-          {
-            "in": "query",
-            "name": "period",
-            "required": false,
-            "schema": {
-              "default": "daily",
-              "enum": [
-                "1m",
-                "5m",
-                "15m",
-                "30m",
-                "1h",
-                "daily",
-                "weekly",
-                "monthly",
-                "quarterly",
-                "yearly"
-              ],
-              "type": "string"
-            }
-          },
-          {
-            "in": "query",
-            "name": "offset",
-            "required": false,
-            "schema": {
-              "maximum": 4294967295,
-              "minimum": 0,
-              "type": "integer"
-            }
-          },
-          {
-            "in": "query",
-            "name": "limit",
-            "required": false,
-            "schema": {
-              "maximum": 1000,
-              "minimum": 1,
-              "type": "integer"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/SuccessEnvelope"
-                }
-              }
-            },
-            "description": "请求成功"
-          },
-          "400": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorEnvelope"
-                }
-              }
-            },
-            "description": "参数错误"
-          },
-          "502": {
-            "description": "上游不可用"
-          },
-          "504": {
-            "description": "上游超时"
-          }
-        },
-        "summary": "查询指数 K 线"
-      }
-    },
     "/api/v1/mac/boards": {
       "get": {
         "operationId": "mac.boards",
@@ -899,76 +809,6 @@
         "summary": "查询 MAC 成交"
       }
     },
-    "/api/v1/market/announcement": {
-      "get": {
-        "operationId": "stock.announcement",
-        "parameters": [],
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/SuccessEnvelope"
-                }
-              }
-            },
-            "description": "请求成功"
-          },
-          "400": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorEnvelope"
-                }
-              }
-            },
-            "description": "参数错误"
-          },
-          "502": {
-            "description": "上游不可用"
-          },
-          "504": {
-            "description": "上游超时"
-          }
-        },
-        "summary": "查询公告"
-      }
-    },
-    "/api/v1/market/exchange-announcement": {
-      "get": {
-        "operationId": "stock.exchange-announcement",
-        "parameters": [],
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/SuccessEnvelope"
-                }
-              }
-            },
-            "description": "请求成功"
-          },
-          "400": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorEnvelope"
-                }
-              }
-            },
-            "description": "参数错误"
-          },
-          "502": {
-            "description": "上游不可用"
-          },
-          "504": {
-            "description": "上游超时"
-          }
-        },
-        "summary": "查询交易所公告"
-      }
-    },
     "/api/v1/stocks": {
       "get": {
         "operationId": "stock.list",
@@ -1036,6 +876,41 @@
           }
         },
         "summary": "查询主市场证券列表"
+      }
+    },
+    "/api/v1/stocks/announcement": {
+      "get": {
+        "operationId": "stock.announcement",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessEnvelope"
+                }
+              }
+            },
+            "description": "请求成功"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "参数错误"
+          },
+          "502": {
+            "description": "上游不可用"
+          },
+          "504": {
+            "description": "上游超时"
+          }
+        },
+        "summary": "查询公告"
       }
     },
     "/api/v1/stocks/auction": {
@@ -1250,6 +1125,41 @@
         "summary": "查询主市场证券数量"
       }
     },
+    "/api/v1/stocks/exchange-announcement": {
+      "get": {
+        "operationId": "stock.exchange-announcement",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessEnvelope"
+                }
+              }
+            },
+            "description": "请求成功"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "参数错误"
+          },
+          "502": {
+            "description": "上游不可用"
+          },
+          "504": {
+            "description": "上游超时"
+          }
+        },
+        "summary": "查询交易所公告"
+      }
+    },
     "/api/v1/stocks/f10": {
       "get": {
         "operationId": "company.f10",
@@ -1346,6 +1256,96 @@
           }
         },
         "summary": "查询财务信息"
+      }
+    },
+    "/api/v1/stocks/index-bars": {
+      "get": {
+        "operationId": "stock.index.bars",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "code",
+            "required": true,
+            "schema": {
+              "examples": [
+                "000001.SZ",
+                "600519.SH"
+              ],
+              "pattern": "^[0-9]{6}\\.(SH|SZ)$",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "period",
+            "required": false,
+            "schema": {
+              "default": "daily",
+              "enum": [
+                "1m",
+                "5m",
+                "15m",
+                "30m",
+                "1h",
+                "daily",
+                "weekly",
+                "monthly",
+                "quarterly",
+                "yearly"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "maximum": 4294967295,
+              "minimum": 0,
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "maximum": 1000,
+              "minimum": 1,
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessEnvelope"
+                }
+              }
+            },
+            "description": "请求成功"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "参数错误"
+          },
+          "502": {
+            "description": "上游不可用"
+          },
+          "504": {
+            "description": "上游超时"
+          }
+        },
+        "summary": "查询指数 K 线"
       }
     },
     "/api/v1/stocks/index-info": {

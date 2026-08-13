@@ -17,7 +17,8 @@
 
 ### 新增能力
 
-- `stock-market-http-api`：通过版本化 Gin HTTP 接口提供稳定的 `gotdx` 沪深主市场股票、F10/财务和 MAC 股票行情查询，并包含参数校验、CORS、统一 JSON 响应和服务健康状态。
+- `main-market-http-api`：通过 `/api/v1/stocks` 提供普通 `gotdx.Client` 的沪深主市场证券、指数、行情和 F10/财务能力。
+- `mac-market-http-api`：通过 `/api/v1/mac` 提供 `gotdx` MAC 客户端的板块、证券增强行情和市场监控能力。
 - `containerized-service`：提供可重复构建的多阶段 Docker 和 Docker Compose 部署，支持运行时配置、健康检查和优雅生命周期管理。
 
 ### 修改能力

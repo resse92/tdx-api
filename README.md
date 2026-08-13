@@ -27,6 +27,9 @@ curl -X POST 'http://127.0.0.1:8080/api/v1/stocks/quotes' \
 # 日 K 线，不复权
 curl 'http://127.0.0.1:8080/api/v1/stocks/bars?code=600519.SH&period=daily&adjust=none&limit=20'
 
+# 上证指数日 K 线（指数也属于主市场 stocks 前缀）
+curl 'http://127.0.0.1:8080/api/v1/stocks/index-bars?code=000001.SH&period=daily&limit=20'
+
 # F10
 curl 'http://127.0.0.1:8080/api/v1/stocks/f10?code=600519.SH'
 
@@ -105,7 +108,7 @@ TDX_INTEGRATION=1 go test ./internal/tdx -run TestLive
 
 ## 能力边界
 
-稳定 API 仅允许 `.SZ`（深圳）和 `.SH`（上海）证券代码；无证券代码的全市场接口仅允许 `market=0` 或 `market=1`。API 不包含北京、香港、美国、扩展市场、商品 `Goods*`、ICFQS 原始接口、实验性协议或旧版兼容协议。完整对应关系见 [`docs/COVERAGE.md`](docs/COVERAGE.md)。第三方 TDX 节点可能不可用、缓慢或返回不一致数据，服务仅提供有界重试、主机池故障转移和标准化错误响应。
+公共接口按上游协议分组：普通主市场客户端的股票、指数和 F10 能力统一位于 `/api/v1/stocks`，MAC 客户端能力位于 `/api/v1/mac`。稳定 API 仅允许 `.SZ`（深圳）和 `.SH`（上海）证券代码；无证券代码的全市场接口仅允许 `market=0` 或 `market=1`。API 不包含北京、香港、美国、扩展市场、商品 `Goods*`、ICFQS 原始接口、实验性协议或旧版兼容协议。完整对应关系见 [`docs/COVERAGE.md`](docs/COVERAGE.md)。第三方 TDX 节点可能不可用、缓慢或返回不一致数据，服务仅提供有界重试、主机池故障转移和标准化错误响应。
 
 ## 固定版本
 

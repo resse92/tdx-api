@@ -151,6 +151,50 @@ func TestOpenAPIUsesCodeQueryParameter(t *testing.T) {
 	}
 }
 
+func TestMainMarketIndexBarsUseStocksPrefix(t *testing.T) {
+	f := &fakeCaller{ready: true}
+	r := NewRouter(testConfig(), f)
+
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, httptest.NewRequest(http.MethodGet, "/api/v1/stocks/index-bars?code=000001.SH&limit=10", nil))
+	if w.Code != http.StatusOK || f.calls != 1 || f.last.Market != 1 || f.last.Code != "000001" {
+		t.Fatalf("主市场指数请求 status=%d calls=%d params=%+v", w.Code, f.calls, f.last)
+	}
+
+	w = httptest.NewRecorder()
+	r.ServeHTTP(w, httptest.NewRequest(http.MethodGet, "/api/v1/indexes/bars?code=000001.SH&limit=10", nil))
+	if w.Code != http.StatusNotFound {
+		t.Fatalf("旧 indexes 路径应返回 404，status=%d", w.Code)
+	}
+
+	paths := OpenAPIDocument()["paths"].(map[string]any)
+	if _, ok := paths["/api/v1/stocks/index-bars"]; !ok {
+		t.Fatal("OpenAPI 缺少 stocks/index-bars")
+	}
+	for path := range paths {
+		if strings.HasPrefix(path, "/api/v1/indexes") {
+			t.Fatalf("OpenAPI 不应包含 indexes 前缀: %s", path)
+		}
+	}
+}
+
+func TestMainMarketAnnouncementsUseStocksPrefix(t *testing.T) {
+	f := &fakeCaller{ready: true}
+	r := NewRouter(testConfig(), f)
+
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, httptest.NewRequest(http.MethodGet, "/api/v1/stocks/announcement", nil))
+	if w.Code != http.StatusOK || f.calls != 1 {
+		t.Fatalf("主市场公告请求 status=%d calls=%d", w.Code, f.calls)
+	}
+
+	w = httptest.NewRecorder()
+	r.ServeHTTP(w, httptest.NewRequest(http.MethodGet, "/api/v1/market/announcement", nil))
+	if w.Code != http.StatusNotFound {
+		t.Fatalf("旧 market 路径应返回 404，status=%d", w.Code)
+	}
+}
+
 func TestGeneratedOpenAPIIsCurrent(t *testing.T) {
 	generated, err := os.ReadFile("../../docs/openapi.json")
 	if err != nil {
