@@ -20,8 +20,11 @@ func main() {
 		slog.Error("配置加载失败", "error", err)
 		os.Exit(1)
 	}
-	clients := tdx.New(cfg)
-	server := &http.Server{Addr: cfg.HTTPAddr, Handler: httpapi.NewRouter(cfg, clients), ReadHeaderTimeout: cfg.UpstreamTimeout}
+	server, clients, err := assemble(cfg, func(c config.Config) (tdx.Caller, error) { return tdx.New(c) })
+	if err != nil {
+		slog.Error("TDX 连接初始化失败", "error", err)
+		os.Exit(1)
+	}
 	errCh := make(chan error, 1)
 	go func() { slog.Info("TDX API 已启动", "address", cfg.HTTPAddr); errCh <- server.ListenAndServe() }()
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
@@ -42,4 +45,13 @@ func main() {
 	if err := clients.Close(); err != nil {
 		slog.Error("TDX 连接关闭失败", "error", err)
 	}
+}
+
+func assemble(cfg config.Config, create func(config.Config) (tdx.Caller, error)) (*http.Server, tdx.Caller, error) {
+	clients, err := create(cfg)
+	if err != nil {
+		return nil, nil, err
+	}
+	server := &http.Server{Addr: cfg.HTTPAddr, Handler: httpapi.NewRouter(cfg, clients), ReadHeaderTimeout: cfg.UpstreamTimeout}
+	return server, clients, nil
 }

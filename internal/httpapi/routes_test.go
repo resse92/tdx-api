@@ -56,11 +56,18 @@ func TestHealthAndNotFound(t *testing.T) {
 }
 
 func TestReadinessUnavailable(t *testing.T) {
-	r := NewRouter(testConfig(), &fakeCaller{})
+	f := &fakeCaller{}
+	r := NewRouter(testConfig(), f)
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, httptest.NewRequest(http.MethodGet, "/health/ready", nil))
 	if w.Code != http.StatusBadGateway {
 		t.Fatalf("状态码: %d", w.Code)
+	}
+	f.ready = true
+	w = httptest.NewRecorder()
+	r.ServeHTTP(w, httptest.NewRequest(http.MethodGet, "/health/ready", nil))
+	if w.Code != http.StatusOK {
+		t.Fatalf("恢复后状态码: %d", w.Code)
 	}
 }
 

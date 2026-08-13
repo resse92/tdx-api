@@ -5,9 +5,11 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log/slog"
 	"net"
 	"strings"
 	"sync"
+	"sync/atomic"
 
 	"github.com/bensema/gotdx"
 	"github.com/resse/tdx-api/internal/config"
@@ -51,25 +53,66 @@ type Caller interface {
 }
 
 type clients struct {
-	main, mac *gotdx.Client
-	mu        sync.Mutex
+	main, mac                     *gotdx.Client
+	connectMain, connectMAC       func() error
+	disconnectMain, disconnectMAC func() error
+	invoke                        func(string, Params) (any, error)
+	mainAddress, macAddress       func() string
+	logger                        *slog.Logger
+	group                         int
+	mainReady, macReady           atomic.Bool
+	mu                            sync.Mutex
 }
 type Service struct {
-	pool    chan *clients
-	all     []*clients
-	retries int
-	once    sync.Once
+	pool      chan *clients
+	all       []*clients
+	retries   int
+	lifecycle sync.RWMutex
+	closed    bool
+	once      sync.Once
 }
 
-func New(c config.Config) *Service {
+type clientFactory func([]gotdx.Option) *clients
+
+func New(c config.Config) (*Service, error) {
+	return newService(c, slog.Default(), newClients)
+}
+
+func newService(c config.Config, logger *slog.Logger, factory clientFactory) (*Service, error) {
+	if logger == nil {
+		logger = slog.Default()
+	}
 	s := &Service{pool: make(chan *clients, c.PoolSize), retries: c.RetryLimit}
-	for range c.PoolSize {
-		opts := options(c)
-		b := &clients{main: gotdx.New(opts...), mac: gotdx.NewMAC(opts...)}
+	opts := options(c)
+	for i := range c.PoolSize {
+		b := factory(opts)
+		b.logger = logger
+		b.group = i + 1
 		s.all = append(s.all, b)
+		if err := b.ensureMain("startup"); err != nil {
+			_ = s.closeClients()
+			return nil, fmt.Errorf("初始化第 %d 个主市场连接: %w", i+1, err)
+		}
+		if err := b.ensureMAC("startup"); err != nil {
+			_ = s.closeClients()
+			return nil, fmt.Errorf("初始化第 %d 个 MAC 连接: %w", i+1, err)
+		}
 		s.pool <- b
 	}
-	return s
+	return s, nil
+}
+
+func newClients(opts []gotdx.Option) *clients {
+	main, mac := gotdx.New(opts...), gotdx.NewMAC(opts...)
+	b := &clients{main: main, mac: mac}
+	b.connectMain = func() error { _, err := main.Connect(); return err }
+	b.connectMAC = mac.ConnectMAC
+	b.disconnectMain = main.Disconnect
+	b.disconnectMAC = mac.Disconnect
+	b.mainAddress = main.CurrentAddress
+	b.macAddress = mac.CurrentAddress
+	b.invoke = func(op string, p Params) (any, error) { return call(b, op, p) }
+	return b
 }
 
 func options(c config.Config) []gotdx.Option {
@@ -77,9 +120,7 @@ func options(c config.Config) []gotdx.Option {
 	add := func(hosts []string, primary func(string) gotdx.Option, pool func(...string) gotdx.Option) {
 		if len(hosts) > 0 {
 			opts = append(opts, primary(hosts[0]))
-			if len(hosts) > 1 {
-				opts = append(opts, pool(hosts[1:]...))
-			}
+			opts = append(opts, pool(hosts[1:]...))
 		}
 	}
 	add(c.MainHosts, gotdx.WithTCPAddress, gotdx.WithTCPAddressPool)
@@ -87,22 +128,56 @@ func options(c config.Config) []gotdx.Option {
 	return opts
 }
 
-func (s *Service) Ready() bool { return s != nil && len(s.all) > 0 }
+func (s *Service) Ready() bool {
+	if s == nil {
+		return false
+	}
+	s.lifecycle.RLock()
+	defer s.lifecycle.RUnlock()
+	if s.closed || len(s.all) == 0 {
+		return false
+	}
+	for _, b := range s.all {
+		if !b.mainReady.Load() || !b.macReady.Load() {
+			return false
+		}
+	}
+	return true
+}
+
 func (s *Service) Close() error {
+	if s == nil {
+		return nil
+	}
 	var first error
 	s.once.Do(func() {
-		for _, b := range s.all {
-			for _, c := range []*gotdx.Client{b.main, b.mac} {
-				if err := c.Disconnect(); err != nil && first == nil {
-					first = err
-				}
-			}
-		}
+		s.lifecycle.Lock()
+		defer s.lifecycle.Unlock()
+		s.closed = true
+		first = s.closeClients()
 	})
 	return first
 }
 
+func (s *Service) closeClients() error {
+	var first error
+	for _, b := range s.all {
+		if err := b.disconnectMainClient("shutdown", nil); err != nil && first == nil {
+			first = err
+		}
+		if err := b.disconnectMACClient("shutdown", nil); err != nil && first == nil {
+			first = err
+		}
+	}
+	return first
+}
+
 func (s *Service) with(ctx context.Context, fn func(*clients) (any, error)) (any, error) {
+	s.lifecycle.RLock()
+	defer s.lifecycle.RUnlock()
+	if s.closed {
+		return nil, errors.New("TDX 服务已关闭")
+	}
 	select {
 	case <-ctx.Done():
 		return nil, ctx.Err()
@@ -110,14 +185,7 @@ func (s *Service) with(ctx context.Context, fn func(*clients) (any, error)) (any
 		defer func() { s.pool <- b }()
 		b.mu.Lock()
 		defer b.mu.Unlock()
-		return retry(ctx, s.retries, isRetryable, func() (any, error) {
-			out, err := fn(b)
-			if err != nil {
-				_ = b.main.Disconnect()
-				_ = b.mac.Disconnect()
-			}
-			return out, err
-		})
+		return retry(ctx, s.retries, isRetryable, func() (any, error) { return fn(b) })
 	}
 }
 
@@ -155,7 +223,94 @@ func isRetryable(err error) bool {
 }
 
 func (s *Service) Call(ctx context.Context, op string, p Params) (any, error) {
-	return s.with(ctx, func(c *clients) (any, error) { return call(c, op, p) })
+	mac := strings.HasPrefix(op, "mac.")
+	return s.with(ctx, func(c *clients) (any, error) {
+		if mac {
+			if err := c.ensureMAC("request"); err != nil {
+				return nil, err
+			}
+		} else if err := c.ensureMain("request"); err != nil {
+			return nil, err
+		}
+		out, err := c.invoke(op, p)
+		if err != nil && isRetryable(err) {
+			if mac {
+				_ = c.disconnectMACClient("protocol_error", err)
+			} else {
+				_ = c.disconnectMainClient("protocol_error", err)
+			}
+		}
+		return out, err
+	})
+}
+
+func (c *clients) ensureMain(trigger string) error {
+	if c.mainReady.Load() {
+		return nil
+	}
+	c.logConnectAttempt("main", trigger)
+	if err := c.connectMain(); err != nil {
+		c.logConnectFailure("main", trigger, err)
+		return err
+	}
+	c.mainReady.Store(true)
+	c.logConnectSuccess("main", trigger, c.address(c.mainAddress))
+	return nil
+}
+
+func (c *clients) ensureMAC(trigger string) error {
+	if c.macReady.Load() {
+		return nil
+	}
+	c.logConnectAttempt("mac", trigger)
+	if err := c.connectMAC(); err != nil {
+		c.logConnectFailure("mac", trigger, err)
+		return err
+	}
+	c.macReady.Store(true)
+	c.logConnectSuccess("mac", trigger, c.address(c.macAddress))
+	return nil
+}
+
+func (c *clients) disconnectMainClient(reason string, cause error) error {
+	if c.mainReady.Swap(false) {
+		c.logDisconnect("main", reason, cause)
+	}
+	return c.disconnectMain()
+}
+
+func (c *clients) disconnectMACClient(reason string, cause error) error {
+	if c.macReady.Swap(false) {
+		c.logDisconnect("mac", reason, cause)
+	}
+	return c.disconnectMAC()
+}
+
+func (c *clients) logConnectAttempt(protocol, trigger string) {
+	c.logger.Info("TDX 连接中", "protocol", protocol, "client_group", c.group, "trigger", trigger)
+}
+
+func (c *clients) logConnectSuccess(protocol, trigger, address string) {
+	c.logger.Info("TDX 连接成功", "protocol", protocol, "client_group", c.group, "trigger", trigger, "address", address)
+}
+
+func (c *clients) logConnectFailure(protocol, trigger string, err error) {
+	c.logger.Error("TDX 连接失败", "protocol", protocol, "client_group", c.group, "trigger", trigger, "error", err)
+}
+
+func (c *clients) logDisconnect(protocol, reason string, cause error) {
+	args := []any{"protocol", protocol, "client_group", c.group, "reason", reason}
+	if cause != nil {
+		args = append(args, "error", cause)
+	}
+	c.logger.Info("TDX 连接断开", args...)
+}
+
+func (c *clients) address(get func() string) string {
+	if get == nil {
+		return ""
+	}
+	return get()
 }
 func call(c *clients, op string, p Params) (any, error) {
 	m := c.main

@@ -58,6 +58,8 @@ curl 'http://127.0.0.1:8080/api/v1/mac/boards/members?board_symbol=BK0420&limit=
 | `MAX_ITEMS` | `1000` | 列表与批量请求上限 |
 | `SHUTDOWN_TIMEOUT` | `15s` | 优雅关闭期限 |
 
+服务启动时会先为每个客户端组建立主市场和 MAC 连接，全部连接成功后才开始监听 HTTP。任一上游不可达时进程以非零状态退出，由部署平台按重启策略再次尝试。请求执行前会检查对应协议连接；可重试网络错误只断开失败的协议连接，并在请求期限和 `TDX_RETRY_LIMIT` 范围内重新连接。
+
 ## 公共参数
 
 接口只接受 Swagger 明确列出的参数，传入未知参数会返回 HTTP 400。
@@ -88,7 +90,7 @@ docker compose logs -f tdx-api
 docker compose down
 ```
 
-Compose 使用 `/health/ready` 执行健康检查，并预留 20 秒停止宽限时间。
+Compose 使用 `/health/ready` 执行健康检查；只有全部主市场与 MAC 连接可用且服务未关闭时才报告健康。Compose 预留 20 秒停止宽限时间，关闭开始后服务不再建立新连接，并等待在途请求结束后断开上游。
 
 ## 验证
 
