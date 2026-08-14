@@ -18,16 +18,17 @@ func (fakeCaller) Close() error                                          { retur
 
 func TestAssemblePropagatesTDXStartupError(t *testing.T) {
 	want := errors.New("连接失败")
-	server, clients, err := assemble(config.Config{}, func(config.Config) (tdx.Caller, error) { return nil, want })
-	if !errors.Is(err, want) || server != nil || clients != nil {
-		t.Fatalf("server=%v clients=%v err=%v", server, clients, err)
+	server, clients, cache, err := assemble(config.Config{}, func(config.Config) (tdx.Caller, error) { return nil, want })
+	if !errors.Is(err, want) || server != nil || clients != nil || cache != nil {
+		t.Fatalf("server=%v clients=%v cache=%v err=%v", server, clients, cache, err)
 	}
 }
 
 func TestAssembleCreatesServerAfterTDXStartup(t *testing.T) {
-	cfg := config.Config{HTTPAddr: ":8080", GinMode: "test", CORSOrigins: []string{"*"}, CORSMethods: []string{"GET"}, PoolSize: 1, UpstreamTimeout: time.Second, MaxItems: 1}
-	server, clients, err := assemble(cfg, func(config.Config) (tdx.Caller, error) { return fakeCaller{}, nil })
-	if err != nil || server == nil || clients == nil || server.Addr != cfg.HTTPAddr {
-		t.Fatalf("server=%v clients=%v err=%v", server, clients, err)
+	cfg := config.Config{HTTPAddr: ":8080", GinMode: "test", CORSOrigins: []string{"*"}, CORSMethods: []string{"GET"}, PoolSize: 1, UpstreamTimeout: time.Second, RefreshTimeout: time.Second, SQLitePath: t.TempDir() + "/boards.sqlite", MaxItems: 1}
+	server, clients, cache, err := assemble(cfg, func(config.Config) (tdx.Caller, error) { return fakeCaller{}, nil })
+	if err != nil || server == nil || clients == nil || cache == nil || server.Addr != cfg.HTTPAddr {
+		t.Fatalf("server=%v clients=%v cache=%v err=%v", server, clients, cache, err)
 	}
+	_ = cache.Close()
 }

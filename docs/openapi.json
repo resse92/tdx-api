@@ -127,7 +127,7 @@
             "description": "上游超时"
           }
         },
-        "summary": "查询 MAC 板块列表"
+        "summary": "查询缓存优先的 MAC 板块列表"
       }
     },
     "/api/v1/mac/boards/members": {
@@ -182,7 +182,7 @@
             "description": "上游超时"
           }
         },
-        "summary": "查询 MAC 板块成分"
+        "summary": "查询缓存优先的 MAC 板块成分"
       }
     },
     "/api/v1/mac/boards/quotes": {

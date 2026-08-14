@@ -22,6 +22,8 @@ type Config struct {
 	RetryLimit      int
 	MaxItems        uint32
 	ShutdownTimeout time.Duration
+	SQLitePath      string
+	RefreshTimeout  time.Duration
 }
 
 func Load() (Config, error) {
@@ -38,6 +40,8 @@ func Load() (Config, error) {
 		RetryLimit:      1,
 		MaxItems:        1000,
 		ShutdownTimeout: 15 * time.Second,
+		SQLitePath:      "./data/boards.sqlite",
+		RefreshTimeout:  2 * time.Minute,
 	}
 	var err error
 	if c.CORSAllowCreds, err = boolEnv("CORS_ALLOW_CREDENTIALS", false); err != nil {
@@ -58,6 +62,10 @@ func Load() (Config, error) {
 	if c.ShutdownTimeout, err = durationEnv("SHUTDOWN_TIMEOUT", c.ShutdownTimeout); err != nil {
 		return Config{}, err
 	}
+	c.SQLitePath = env("SQLITE_PATH", c.SQLitePath)
+	if c.RefreshTimeout, err = durationEnv("BOARD_REFRESH_TIMEOUT", c.RefreshTimeout); err != nil {
+		return Config{}, err
+	}
 	if err := c.Validate(); err != nil {
 		return Config{}, err
 	}
@@ -68,6 +76,9 @@ func (c Config) Validate() error {
 	if c.HTTPAddr == "" {
 		return fmt.Errorf("HTTP_ADDR 不能为空")
 	}
+	if strings.TrimSpace(c.SQLitePath) == "" {
+		return fmt.Errorf("SQLITE_PATH 不能为空")
+	}
 	if c.GinMode != "debug" && c.GinMode != "release" && c.GinMode != "test" {
 		return fmt.Errorf("GIN_MODE 必须是 debug、release 或 test")
 	}
@@ -77,7 +88,7 @@ func (c Config) Validate() error {
 	if c.RetryLimit < 0 || c.RetryLimit > 5 {
 		return fmt.Errorf("TDX_RETRY_LIMIT 必须在 0 到 5 之间")
 	}
-	if c.UpstreamTimeout <= 0 || c.ShutdownTimeout <= 0 {
+	if c.UpstreamTimeout <= 0 || c.ShutdownTimeout <= 0 || c.RefreshTimeout <= 0 {
 		return fmt.Errorf("超时时间必须大于 0")
 	}
 	if c.MaxItems == 0 {

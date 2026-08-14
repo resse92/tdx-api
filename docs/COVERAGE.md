@@ -11,7 +11,7 @@
 | 成交与市场分析 | `StockTransaction`、`StockHistoryOrders`、`StockHistoryTransaction`、`StockIndexInfo`、`StockIndexMomentum`、`StockAuction`、`StockUnusual`、`StockVolumeProfile` | `/api/v1/stocks` |
 | 主站信息 | `GetExchangeAnnouncement`、`GetAnnouncement` | `/api/v1/stocks` |
 | F10 与公司资料 | `GetFinanceInfo`、`GetXDXRInfo`、`StockF10` | `/api/v1/stocks`，`code` 使用查询参数 |
-| MAC 板块 | `MACBoardList`、`MACBoardMembers`、`MACBoardMembersQuotes` | `/api/v1/mac/boards`，`board_symbol` 使用查询参数 |
+| MAC 板块 | `MACBoardList`、`MACBoardMembers`、`MACBoardMembersQuotes`；列表和成分 SQLite 优先 | `/api/v1/mac/boards`，`board_symbol` 使用查询参数 |
 | MAC 股票 | `MACSymbolQuotes`、`MACQuotesWithDate`、`MACTransactionsWithDate`、`MACAuction`、`MACTickCharts`、`MACSymbolInfo`、`MACCapitalFlow`、`MACMarketMonitor`、`MACSymbolBelongBoard`、`MACSymbolBars` | `/api/v1/mac` |
 
 ## 明确排除

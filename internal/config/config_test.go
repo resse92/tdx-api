@@ -20,17 +20,19 @@ func TestLoadOverrides(t *testing.T) {
 	t.Setenv("TDX_TIMEOUT", "3s")
 	t.Setenv("CORS_ALLOWED_ORIGINS", "https://a.example,https://b.example")
 	t.Setenv("CORS_ALLOW_CREDENTIALS", "true")
+	t.Setenv("SQLITE_PATH", "/tmp/boards.sqlite")
+	t.Setenv("BOARD_REFRESH_TIMEOUT", "45s")
 	c, err := Load()
 	if err != nil {
 		t.Fatal(err)
 	}
-	if c.PoolSize != 4 || c.UpstreamTimeout.String() != "3s" || len(c.CORSOrigins) != 2 {
+	if c.PoolSize != 4 || c.UpstreamTimeout.String() != "3s" || c.SQLitePath != "/tmp/boards.sqlite" || c.RefreshTimeout.String() != "45s" || len(c.CORSOrigins) != 2 {
 		t.Fatalf("覆盖配置错误: %+v", c)
 	}
 }
 
 func TestLoadRejectsInvalidValues(t *testing.T) {
-	tests := []struct{ key, value string }{{"TDX_POOL_SIZE", "0"}, {"TDX_TIMEOUT", "bad"}, {"GIN_MODE", "invalid"}}
+	tests := []struct{ key, value string }{{"TDX_POOL_SIZE", "0"}, {"TDX_TIMEOUT", "bad"}, {"BOARD_REFRESH_TIMEOUT", "0s"}, {"SQLITE_PATH", " "}, {"GIN_MODE", "invalid"}}
 	for _, tt := range tests {
 		t.Run(tt.key, func(t *testing.T) {
 			t.Setenv(tt.key, tt.value)

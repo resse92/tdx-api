@@ -9,6 +9,7 @@ import (
 	"os/signal"
 	"syscall"
 
+	"github.com/resse/tdx-api/internal/boardcache"
 	"github.com/resse/tdx-api/internal/config"
 	"github.com/resse/tdx-api/internal/httpapi"
 	"github.com/resse/tdx-api/internal/tdx"
@@ -20,7 +21,7 @@ func main() {
 		slog.Error("配置加载失败", "error", err)
 		os.Exit(1)
 	}
-	server, clients, err := assemble(cfg, func(c config.Config) (tdx.Caller, error) { return tdx.New(c) })
+	server, clients, cache, err := assemble(cfg, func(c config.Config) (tdx.Caller, error) { return tdx.New(c) })
 	if err != nil {
 		slog.Error("TDX 连接初始化失败", "error", err)
 		os.Exit(1)
@@ -42,16 +43,29 @@ func main() {
 	if err := server.Shutdown(shutdownCtx); err != nil {
 		slog.Error("HTTP 服务优雅关闭失败", "error", err)
 	}
+	if err := cache.Stop(shutdownCtx); err != nil {
+		slog.Error("板块调度器关闭失败", "error", err)
+	}
+	if err := cache.Close(); err != nil {
+		slog.Error("板块缓存关闭失败", "error", err)
+	}
 	if err := clients.Close(); err != nil {
 		slog.Error("TDX 连接关闭失败", "error", err)
 	}
 }
 
-func assemble(cfg config.Config, create func(config.Config) (tdx.Caller, error)) (*http.Server, tdx.Caller, error) {
+func assemble(cfg config.Config, create func(config.Config) (tdx.Caller, error)) (*http.Server, tdx.Caller, *boardcache.Service, error) {
 	clients, err := create(cfg)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
-	server := &http.Server{Addr: cfg.HTTPAddr, Handler: httpapi.NewRouter(cfg, clients), ReadHeaderTimeout: cfg.UpstreamTimeout}
-	return server, clients, nil
+	repo, err := boardcache.Open(cfg.SQLitePath)
+	if err != nil {
+		_ = clients.Close()
+		return nil, nil, nil, err
+	}
+	cache := boardcache.New(repo, boardcache.CallerFetcher{Caller: clients}, cfg.RefreshTimeout, slog.Default())
+	cache.Start(context.Background())
+	server := &http.Server{Addr: cfg.HTTPAddr, Handler: httpapi.NewRouter(cfg, clients, cache), ReadHeaderTimeout: cfg.UpstreamTimeout}
+	return server, clients, cache, nil
 }

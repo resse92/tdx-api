@@ -9,8 +9,10 @@ import (
 	"os"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/resse/tdx-api/internal/boardcache"
 	"github.com/resse/tdx-api/internal/config"
 	"github.com/resse/tdx-api/internal/tdx"
 )
@@ -78,6 +80,38 @@ func TestValidationPreventsUpstreamCall(t *testing.T) {
 	r.ServeHTTP(w, httptest.NewRequest(http.MethodGet, "/api/v1/stocks?market=1&limit=0", nil))
 	if w.Code != http.StatusBadRequest || f.calls != 0 {
 		t.Fatalf("status=%d calls=%d", w.Code, f.calls)
+	}
+}
+
+func TestBoardRoutesUseCacheButQuotesRemainLive(t *testing.T) {
+	f := &fakeCaller{ready: true}
+	repo, err := boardcache.Open(t.TempDir() + "/boards.sqlite")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer repo.Close()
+	if err := repo.ReplaceBoards(context.Background(), []any{map[string]any{"code": "BK1"}}); err != nil {
+		t.Fatal(err)
+	}
+	if err := repo.ReplaceMembers(context.Background(), "BK1", []any{map[string]any{"symbol": "000001"}}); err != nil {
+		t.Fatal(err)
+	}
+	cache := boardcache.New(repo, boardcache.CallerFetcher{Caller: f}, time.Second, nil)
+	r := NewRouter(testConfig(), f, cache)
+	for _, path := range []string{"/api/v1/mac/boards?limit=10", "/api/v1/mac/boards/members?board_symbol=BK1&limit=10"} {
+		w := httptest.NewRecorder()
+		r.ServeHTTP(w, httptest.NewRequest(http.MethodGet, path, nil))
+		if w.Code != http.StatusOK {
+			t.Fatalf("%s: %d", path, w.Code)
+		}
+	}
+	if f.calls != 0 {
+		t.Fatalf("缓存命中不应调用上游: %d", f.calls)
+	}
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, httptest.NewRequest(http.MethodGet, "/api/v1/mac/boards/quotes?board_symbol=BK1&limit=10", nil))
+	if w.Code != http.StatusOK || f.calls != 1 {
+		t.Fatalf("quotes status=%d calls=%d", w.Code, f.calls)
 	}
 }
 

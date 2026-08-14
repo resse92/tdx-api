@@ -10,6 +10,7 @@ RUN apk add --no-cache ca-certificates wget && addgroup -S app && adduser -S -G 
 WORKDIR /app
 COPY --from=builder /out/tdx-api /app/tdx-api
 COPY --from=builder /src/docs /app/docs
+RUN mkdir -p /data && chown app:app /data
 USER app
 EXPOSE 8080
 ENTRYPOINT ["/app/tdx-api"]

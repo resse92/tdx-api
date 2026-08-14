@@ -10,6 +10,7 @@ import (
 	"regexp"
 
 	"github.com/gin-gonic/gin"
+	"github.com/resse/tdx-api/internal/boardcache"
 	"github.com/resse/tdx-api/internal/config"
 	"github.com/resse/tdx-api/internal/tdx"
 )
@@ -42,8 +43,8 @@ var stableRoutes = []route{
 	{http.MethodGet, "/stocks/finance", "company.finance", "查询财务信息", requireSymbol},
 	{http.MethodGet, "/stocks/xdxr", "company.xdxr", "查询除权除息", requireSymbol},
 	{http.MethodGet, "/stocks/f10", "company.f10", "查询组合 F10", requireSymbol},
-	{http.MethodGet, "/mac/boards", "mac.boards", "查询 MAC 板块列表", validateLimit},
-	{http.MethodGet, "/mac/boards/members", "mac.board.members", "查询 MAC 板块成分", validateBoardLimit},
+	{http.MethodGet, "/mac/boards", "mac.boards", "查询缓存优先的 MAC 板块列表", validateLimit},
+	{http.MethodGet, "/mac/boards/members", "mac.board.members", "查询缓存优先的 MAC 板块成分", validateBoardLimit},
 	{http.MethodGet, "/mac/boards/quotes", "mac.board.quotes", "查询 MAC 板块成分行情", validateBoardLimit},
 	{http.MethodGet, "/mac/symbols/quote", "mac.quote", "查询 MAC 股票快照", requireSymbol},
 	{http.MethodGet, "/mac/symbols/transactions", "mac.transactions", "查询 MAC 成交", validateSymbolLimit},
@@ -59,13 +60,18 @@ var stableRoutes = []route{
 type Server struct {
 	cfg    config.Config
 	caller tdx.Caller
+	cache  *boardcache.Service
 }
 
-func NewRouter(cfg config.Config, caller tdx.Caller) *gin.Engine {
+func NewRouter(cfg config.Config, caller tdx.Caller, caches ...*boardcache.Service) *gin.Engine {
 	gin.SetMode(cfg.GinMode)
 	r := gin.New()
 	r.Use(requestIDMiddleware(), loggingMiddleware(), recoveryMiddleware(), corsMiddleware(cfg))
-	s := &Server{cfg: cfg, caller: caller}
+	var cache *boardcache.Service
+	if len(caches) > 0 {
+		cache = caches[0]
+	}
+	s := &Server{cfg: cfg, caller: caller, cache: cache}
 	r.GET("/health/live", func(c *gin.Context) { writeData(c, http.StatusOK, gin.H{"status": "alive"}) })
 	r.GET("/health/ready", func(c *gin.Context) {
 		if caller == nil || !caller.Ready() {
@@ -111,7 +117,15 @@ func (s *Server) handle(rt route) gin.HandlerFunc {
 		}
 		ctx, cancel := context.WithTimeout(c.Request.Context(), s.cfg.UpstreamTimeout)
 		defer cancel()
-		data, err := s.caller.Call(ctx, rt.Operation, p)
+		var data any
+		var err error
+		if s.cache != nil && rt.Operation == "mac.boards" {
+			data, err = s.cache.Boards(ctx, p.Limit)
+		} else if s.cache != nil && rt.Operation == "mac.board.members" {
+			data, err = s.cache.Members(ctx, p.BoardSymbol, p.Limit)
+		} else {
+			data, err = s.caller.Call(ctx, rt.Operation, p)
+		}
 		if err != nil {
 			writeError(c, err)
 			return

@@ -57,6 +57,8 @@ curl 'http://127.0.0.1:8080/api/v1/mac/boards/members?board_symbol=BK0420&limit=
 | `TDX_RETRY_LIMIT` | `1` | 失败后的附加尝试次数，范围 0-5 |
 | `MAX_ITEMS` | `1000` | 列表与批量请求上限 |
 | `SHUTDOWN_TIMEOUT` | `15s` | 优雅关闭期限 |
+| `SQLITE_PATH` | `./data/boards.sqlite` | 板块缓存 SQLite 文件路径 |
+| `BOARD_REFRESH_TIMEOUT` | `2m` | 全量板块刷新超时 |
 
 服务启动时会先为每个客户端组建立主市场和 MAC 连接，全部连接成功后才开始监听 HTTP。任一上游不可达时进程以非零状态退出，由部署平台按重启策略再次尝试。请求执行前会检查对应协议连接；可重试网络错误只断开失败的协议连接，并在请求期限和 `TDX_RETRY_LIMIT` 范围内重新连接。
 
@@ -90,7 +92,9 @@ docker compose logs -f tdx-api
 docker compose down
 ```
 
-Compose 使用 `/health/ready` 执行健康检查；只有全部主市场与 MAC 连接可用且服务未关闭时才报告健康。Compose 预留 20 秒停止宽限时间，关闭开始后服务不再建立新连接，并等待在途请求结束后断开上游。
+Compose 使用 `/health/ready` 执行健康检查；只有全部主市场与 MAC 连接可用且服务未关闭时才报告健康。Compose 预留 20 秒停止宽限时间，关闭开始后服务不再建立新连接，并等待在途请求结束后断开上游。板块缓存存储在每个 Compose 实例独占的 `board-cache` 卷中，容器内路径为 `/data/boards.sqlite`。
+
+MAC 板块列表和板块成分优先从 SQLite 读取；缓存未加载时才回源并保存成功响应。服务按北京时间每日 09:00、15:00 和 20:00 刷新完整板块数据，刷新失败继续提供上一份完整缓存。板块成分行情保持实时上游查询。
 
 ## 验证
 
