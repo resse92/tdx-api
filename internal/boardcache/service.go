@@ -130,7 +130,8 @@ func (s *Service) Start(ctx context.Context) {
 }
 func (s *Service) loop(ctx context.Context) {
 	defer close(s.done)
-	loc, _ := time.LoadLocation("Asia/Shanghai")
+	loc := time.FixedZone("Asia/Shanghai", 8*60*60)
+
 	for {
 		now := time.Now().In(loc)
 		next := nextTrigger(now)
