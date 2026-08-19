@@ -11,6 +11,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/bensema/gotdx/proto"
 	"github.com/gin-gonic/gin"
 	"github.com/resse/tdx-api/internal/boardcache"
 	"github.com/resse/tdx-api/internal/config"
@@ -18,10 +19,11 @@ import (
 )
 
 type fakeCaller struct {
-	ready bool
-	err   error
-	calls int
-	last  tdx.Params
+	ready  bool
+	err    error
+	calls  int
+	last   tdx.Params
+	result any
 }
 
 func (f *fakeCaller) Call(_ context.Context, _ string, p tdx.Params) (any, error) {
@@ -29,6 +31,9 @@ func (f *fakeCaller) Call(_ context.Context, _ string, p tdx.Params) (any, error
 	f.last = p
 	if f.err != nil {
 		return nil, f.err
+	}
+	if f.result != nil {
+		return f.result, nil
 	}
 	return map[string]any{"ok": true}, nil
 }
@@ -192,13 +197,42 @@ func TestOpenAPIUsesCodeQueryParameter(t *testing.T) {
 	}
 }
 
+func TestOpenAPIUsesDateRangeOnlyForBars(t *testing.T) {
+	doc := OpenAPIDocument()["paths"].(map[string]any)
+	for _, path := range []string{"/api/v1/stocks/bars", "/api/v1/stocks/index-bars", "/api/v1/mac/symbols/bars"} {
+		operation := doc[path].(map[string]any)["get"].(map[string]any)
+		parameters := operation["parameters"].([]any)
+		seen := map[string]bool{}
+		for _, raw := range parameters {
+			seen[raw.(map[string]any)["name"].(string)] = true
+		}
+		for _, name := range []string{"start_date", "end_date"} {
+			if !seen[name] {
+				t.Fatalf("%s 缺少 %s", path, name)
+			}
+		}
+		if seen["offset"] || seen["limit"] {
+			t.Fatalf("%s 不应暴露 offset/limit", path)
+		}
+	}
+	list := doc["/api/v1/stocks"].(map[string]any)["get"].(map[string]any)["parameters"].([]any)
+	listNames := map[string]bool{}
+	for _, raw := range list {
+		listNames[raw.(map[string]any)["name"].(string)] = true
+	}
+	if !listNames["offset"] || !listNames["limit"] {
+		t.Fatal("证券列表分页参数不应被日期范围变更移除")
+	}
+}
+
 func TestMainMarketIndexBarsUseStocksPrefix(t *testing.T) {
 	f := &fakeCaller{ready: true}
+	f.result = &proto.GetIndexBarsReply{List: []proto.IndexBar{{Year: 2026, Month: 8, Day: 19}}}
 	r := NewRouter(testConfig(), f)
 
 	w := httptest.NewRecorder()
-	r.ServeHTTP(w, httptest.NewRequest(http.MethodGet, "/api/v1/stocks/index-bars?code=000001.SH&limit=10", nil))
-	if w.Code != http.StatusOK || f.calls != 1 || f.last.Market != 1 || f.last.Code != "000001" {
+	r.ServeHTTP(w, httptest.NewRequest(http.MethodGet, "/api/v1/stocks/index-bars?code=000001.SH&start_date=20260819&end_date=20260819", nil))
+	if w.Code != http.StatusOK || f.calls != 1 || f.last.Market != 1 || f.last.Code != "000001" || f.last.StartDate != 20260819 || f.last.EndDate != 20260819 {
 		t.Fatalf("主市场指数请求 status=%d calls=%d params=%+v", w.Code, f.calls, f.last)
 	}
 
@@ -215,6 +249,45 @@ func TestMainMarketIndexBarsUseStocksPrefix(t *testing.T) {
 	for path := range paths {
 		if strings.HasPrefix(path, "/api/v1/indexes") {
 			t.Fatalf("OpenAPI 不应包含 indexes 前缀: %s", path)
+		}
+	}
+}
+
+func TestBarsUseDateRangeAndRejectLegacyPagination(t *testing.T) {
+	tests := []struct {
+		name string
+		path string
+		data any
+	}{
+		{"主市场股票", "/api/v1/stocks/bars?code=000001.SZ&start_date=20260818&end_date=20260819", []proto.SecurityBar{{Year: 2026, Month: 8, Day: 17}, {Year: 2026, Month: 8, Day: 18}, {Year: 2026, Month: 8, Day: 19}}},
+		{"主市场指数", "/api/v1/stocks/index-bars?code=000001.SH&start_date=20260818&end_date=20260819", &proto.GetIndexBarsReply{List: []proto.IndexBar{{Year: 2026, Month: 8, Day: 18}, {Year: 2026, Month: 8, Day: 20}}}},
+		{"MAC", "/api/v1/mac/symbols/bars?code=000001.SZ&period=5m&start_date=20260818093000&end_date=20260819150000", []proto.MACSymbolBar{{DateTime: time.Date(2026, 8, 18, 9, 30, 0, 0, time.FixedZone("Asia/Shanghai", 8*60*60))}, {DateTime: time.Date(2026, 8, 20, 9, 30, 0, 0, time.FixedZone("Asia/Shanghai", 8*60*60))}}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			f := &fakeCaller{ready: true, result: tt.data}
+			r := NewRouter(testConfig(), f)
+			w := httptest.NewRecorder()
+			r.ServeHTTP(w, httptest.NewRequest(http.MethodGet, tt.path, nil))
+			if w.Code != http.StatusOK || f.calls != 1 || f.last.StartDate == 0 || f.last.EndDate == 0 {
+				t.Fatalf("status=%d calls=%d params=%+v body=%s", w.Code, f.calls, f.last, w.Body.String())
+			}
+		})
+	}
+
+	for _, path := range []string{
+		"/api/v1/stocks/bars?code=000001.SZ&offset=1&limit=2",
+		"/api/v1/stocks/index-bars?code=000001.SH&start_date=20260819",
+		"/api/v1/mac/symbols/bars?code=000001.SZ&start_date=bad&end_date=20260819150000",
+		"/api/v1/stocks/bars?code=000001.SZ&start_date=20260819093000&end_date=20260819150000",
+		"/api/v1/mac/symbols/bars?code=000001.SZ&period=5m&start_date=20260818&end_date=20260819",
+	} {
+		f := &fakeCaller{ready: true}
+		r := NewRouter(testConfig(), f)
+		w := httptest.NewRecorder()
+		r.ServeHTTP(w, httptest.NewRequest(http.MethodGet, path, nil))
+		if w.Code != http.StatusBadRequest || f.calls != 0 {
+			t.Fatalf("path=%s status=%d calls=%d", path, w.Code, f.calls)
 		}
 	}
 }

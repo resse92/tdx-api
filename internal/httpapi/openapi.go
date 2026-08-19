@@ -55,6 +55,7 @@ func requestProperties() map[string]any {
 	return map[string]any{
 		"market": marketSchema(), "code": codeSchema(),
 		"offset": integerSchema(0, 4294967295), "limit": integerSchema(1, 1000),
+		"start_date": dateRangeSchema(), "end_date": dateRangeSchema(),
 		"date":   map[string]any{"type": "integer", "minimum": 19900101, "maximum": 21001231, "description": "YYYYMMDD；部分实时接口可省略"},
 		"period": map[string]any{"type": "string", "enum": []string{"1m", "5m", "15m", "30m", "1h", "daily", "weekly", "monthly", "quarterly", "yearly"}, "default": "daily"},
 		"adjust": map[string]any{"type": "string", "enum": []string{"none", "forward", "backward"}, "default": "none"},
@@ -70,6 +71,10 @@ func codeSchema() map[string]any {
 }
 func boardSymbolSchema() map[string]any {
 	return map[string]any{"type": "string", "pattern": "^[A-Za-z0-9._-]{1,32}$"}
+}
+
+func dateRangeSchema() map[string]any {
+	return map[string]any{"type": "string", "pattern": "^(?:[0-9]{8}|[0-9]{14})$", "description": "日线及以上使用 YYYYMMDD，日线以下使用 YYYYMMDDhhmmss；包含起止时间，范围不得超过允许跨度"}
 }
 
 func integerSchema(min, max uint64) map[string]any {
@@ -88,13 +93,13 @@ func openAPIParameters(route route) []any {
 	return out
 }
 func requiredQueryParameter(operation, name string) bool {
-	required := map[string][]string{"stock.count": {"market"}, "stock.list": {"market"}, "stock.quote": {"code"}, "stock.kline": {"code"}, "stock.index.bars": {"code"}, "stock.tick": {"code"}, "stock.tick.history": {"code", "date"}, "stock.sampling": {"code"}, "stock.index.info": {"code"}, "stock.index.momentum": {"code"}, "stock.auction": {"code"}, "stock.unusual": {"market"}, "stock.volume-profile": {"code"}, "stock.transactions": {"code"}, "stock.orders.history": {"code", "date"}, "stock.transactions.history": {"code", "date"}, "company.finance": {"code"}, "company.xdxr": {"code"}, "company.f10": {"code"}, "mac.board.members": {"board_symbol"}, "mac.board.quotes": {"board_symbol"}, "mac.quote": {"code"}, "mac.transactions": {"code"}, "mac.auction": {"code"}, "mac.ticks": {"code", "days"}, "mac.symbol.info": {"code"}, "mac.capital-flow": {"code"}, "mac.monitor": {"market"}, "mac.symbol.boards": {"code"}, "mac.symbol.bars": {"code"}}
+	required := map[string][]string{"stock.count": {"market"}, "stock.list": {"market"}, "stock.quote": {"code"}, "stock.kline": {"code", "start_date", "end_date"}, "stock.index.bars": {"code", "start_date", "end_date"}, "stock.tick": {"code"}, "stock.tick.history": {"code", "date"}, "stock.sampling": {"code"}, "stock.index.info": {"code"}, "stock.index.momentum": {"code"}, "stock.auction": {"code"}, "stock.unusual": {"market"}, "stock.volume-profile": {"code"}, "stock.transactions": {"code"}, "stock.orders.history": {"code", "date"}, "stock.transactions.history": {"code", "date"}, "company.finance": {"code"}, "company.xdxr": {"code"}, "company.f10": {"code"}, "mac.board.members": {"board_symbol"}, "mac.board.quotes": {"board_symbol"}, "mac.quote": {"code"}, "mac.transactions": {"code"}, "mac.auction": {"code"}, "mac.ticks": {"code", "days"}, "mac.symbol.info": {"code"}, "mac.capital-flow": {"code"}, "mac.monitor": {"market"}, "mac.symbol.boards": {"code"}, "mac.symbol.bars": {"code", "start_date", "end_date"}}
 	return slices.Contains(required[operation], name)
 }
 
 func operationParameters(operation string) []string {
 	params := map[string][]string{
-		"stock.count": {"market"}, "stock.list": {"market", "offset", "limit"}, "stock.quote": {"code"}, "stock.kline": {"code", "period", "adjust", "offset", "limit"}, "stock.index.bars": {"code", "period", "offset", "limit"}, "stock.tick": {"code", "limit"}, "stock.tick.history": {"code", "date"}, "stock.sampling": {"code"}, "stock.index.info": {"code"}, "stock.index.momentum": {"code"}, "stock.auction": {"code", "limit"}, "stock.unusual": {"market", "limit"}, "stock.volume-profile": {"code"}, "stock.transactions": {"code", "limit"}, "stock.orders.history": {"code", "date"}, "stock.transactions.history": {"code", "date", "limit"}, "company.finance": {"code"}, "company.xdxr": {"code"}, "company.f10": {"code"}, "mac.boards": {"limit"}, "mac.board.members": {"board_symbol", "limit"}, "mac.board.quotes": {"board_symbol", "limit"}, "mac.quote": {"code", "date"}, "mac.transactions": {"code", "date", "limit"}, "mac.auction": {"code", "limit"}, "mac.ticks": {"code", "date", "days"}, "mac.symbol.info": {"code"}, "mac.capital-flow": {"code"}, "mac.monitor": {"market", "limit"}, "mac.symbol.boards": {"code"}, "mac.symbol.bars": {"code", "period", "adjust", "offset", "limit"},
+		"stock.count": {"market"}, "stock.list": {"market", "offset", "limit"}, "stock.quote": {"code"}, "stock.kline": {"code", "period", "adjust", "start_date", "end_date"}, "stock.index.bars": {"code", "period", "adjust", "start_date", "end_date"}, "stock.tick": {"code", "limit"}, "stock.tick.history": {"code", "date"}, "stock.sampling": {"code"}, "stock.index.info": {"code"}, "stock.index.momentum": {"code"}, "stock.auction": {"code", "limit"}, "stock.unusual": {"market", "limit"}, "stock.volume-profile": {"code"}, "stock.transactions": {"code", "limit"}, "stock.orders.history": {"code", "date"}, "stock.transactions.history": {"code", "date", "limit"}, "company.finance": {"code"}, "company.xdxr": {"code"}, "company.f10": {"code"}, "mac.boards": {"limit"}, "mac.board.members": {"board_symbol", "limit"}, "mac.board.quotes": {"board_symbol", "limit"}, "mac.quote": {"code", "date"}, "mac.transactions": {"code", "date", "limit"}, "mac.auction": {"code", "limit"}, "mac.ticks": {"code", "date", "days"}, "mac.symbol.info": {"code"}, "mac.capital-flow": {"code"}, "mac.monitor": {"market", "limit"}, "mac.symbol.boards": {"code"}, "mac.symbol.bars": {"code", "period", "adjust", "start_date", "end_date"},
 	}
 	return params[operation]
 }

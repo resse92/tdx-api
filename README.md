@@ -24,11 +24,11 @@ curl -X POST 'http://127.0.0.1:8080/api/v1/stocks/quotes' \
   -H 'Content-Type: application/json' \
   -d '{"symbols":[{"code":"000001.SZ"},{"code":"600519.SH"}]}'
 
-# 日 K 线，不复权
-curl 'http://127.0.0.1:8080/api/v1/stocks/bars?code=600519.SH&period=daily&adjust=none&limit=20'
+# 日期范围日 K 线，不复权
+curl 'http://127.0.0.1:8080/api/v1/stocks/bars?code=600519.SH&period=daily&adjust=none&start_date=20260801&end_date=20260819'
 
 # 上证指数日 K 线（指数也属于主市场 stocks 前缀）
-curl 'http://127.0.0.1:8080/api/v1/stocks/index-bars?code=000001.SH&period=daily&limit=20'
+curl 'http://127.0.0.1:8080/api/v1/stocks/index-bars?code=000001.SH&period=daily&start_date=20260801&end_date=20260819'
 
 # F10
 curl 'http://127.0.0.1:8080/api/v1/stocks/f10?code=600519.SH'
@@ -72,8 +72,10 @@ curl 'http://127.0.0.1:8080/api/v1/mac/boards/members?board_symbol=BK0420&limit=
 | `code` | 单只证券代码，必须包含交易所后缀，如 `000001.SZ`、`600519.SH` |
 | `symbols` | 批量行情 JSON 数组，每项仅包含带交易所后缀的 `code` |
 | `board_symbol` | MAC 板块代码，通过查询参数提供，不出现在路径中 |
-| `offset` | 可选，列表或 K 线业务分页偏移，默认 `0` |
-| `limit` | 可选，返回条数；不同接口有安全默认值，最大受 `MAX_ITEMS` 限制 |
+| `offset` | 仅列表等分页接口使用；K 线接口不接受该参数 |
+| `limit` | 仅非 K 线分页接口使用；K 线接口按日期范围计算上游数量 |
+| `start_date` | K 线范围起始值，必填；日线及以上为 `YYYYMMDD`，日线以下为 `YYYYMMDDhhmmss` |
+| `end_date` | K 线范围结束值，必填；格式与 `start_date` 相同，包含该日期或时间 |
 | `date` | 历史查询日期，格式 `YYYYMMDD`；实时 MAC 接口可省略 |
 | `period` | K 线周期：`1m`、`5m`、`15m`、`30m`、`1h`、`daily`、`weekly`、`monthly`、`quarterly`、`yearly` |
 | `adjust` | 复权：`none`、`forward`、`backward` |

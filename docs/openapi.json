@@ -412,22 +412,22 @@
           },
           {
             "in": "query",
-            "name": "offset",
-            "required": false,
+            "name": "start_date",
+            "required": true,
             "schema": {
-              "maximum": 4294967295,
-              "minimum": 0,
-              "type": "integer"
+              "description": "日线及以上使用 YYYYMMDD，日线以下使用 YYYYMMDDhhmmss；包含起止时间，范围不得超过允许跨度",
+              "pattern": "^(?:[0-9]{8}|[0-9]{14})$",
+              "type": "string"
             }
           },
           {
             "in": "query",
-            "name": "limit",
-            "required": false,
+            "name": "end_date",
+            "required": true,
             "schema": {
-              "maximum": 1000,
-              "minimum": 1,
-              "type": "integer"
+              "description": "日线及以上使用 YYYYMMDD，日线以下使用 YYYYMMDDhhmmss；包含起止时间，范围不得超过允许跨度",
+              "pattern": "^(?:[0-9]{8}|[0-9]{14})$",
+              "type": "string"
             }
           }
         ],
@@ -1026,22 +1026,22 @@
           },
           {
             "in": "query",
-            "name": "offset",
-            "required": false,
+            "name": "start_date",
+            "required": true,
             "schema": {
-              "maximum": 4294967295,
-              "minimum": 0,
-              "type": "integer"
+              "description": "日线及以上使用 YYYYMMDD，日线以下使用 YYYYMMDDhhmmss；包含起止时间，范围不得超过允许跨度",
+              "pattern": "^(?:[0-9]{8}|[0-9]{14})$",
+              "type": "string"
             }
           },
           {
             "in": "query",
-            "name": "limit",
-            "required": false,
+            "name": "end_date",
+            "required": true,
             "schema": {
-              "maximum": 1000,
-              "minimum": 1,
-              "type": "integer"
+              "description": "日线及以上使用 YYYYMMDD，日线以下使用 YYYYMMDDhhmmss；包含起止时间，范围不得超过允许跨度",
+              "pattern": "^(?:[0-9]{8}|[0-9]{14})$",
+              "type": "string"
             }
           }
         ],
@@ -1298,22 +1298,36 @@
           },
           {
             "in": "query",
-            "name": "offset",
+            "name": "adjust",
             "required": false,
             "schema": {
-              "maximum": 4294967295,
-              "minimum": 0,
-              "type": "integer"
+              "default": "none",
+              "enum": [
+                "none",
+                "forward",
+                "backward"
+              ],
+              "type": "string"
             }
           },
           {
             "in": "query",
-            "name": "limit",
-            "required": false,
+            "name": "start_date",
+            "required": true,
             "schema": {
-              "maximum": 1000,
-              "minimum": 1,
-              "type": "integer"
+              "description": "日线及以上使用 YYYYMMDD，日线以下使用 YYYYMMDDhhmmss；包含起止时间，范围不得超过允许跨度",
+              "pattern": "^(?:[0-9]{8}|[0-9]{14})$",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "end_date",
+            "required": true,
+            "schema": {
+              "description": "日线及以上使用 YYYYMMDD，日线以下使用 YYYYMMDDhhmmss；包含起止时间，范围不得超过允许跨度",
+              "pattern": "^(?:[0-9]{8}|[0-9]{14})$",
+              "type": "string"
             }
           }
         ],

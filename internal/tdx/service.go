@@ -10,26 +10,36 @@ import (
 	"strings"
 	"sync"
 	"sync/atomic"
+	"time"
 
 	"github.com/bensema/gotdx"
 	"github.com/resse/tdx-api/internal/config"
 )
 
 type Params struct {
-	Market      uint8    `json:"-" form:"market"`
-	MarketSet   bool     `json:"-" form:"-"`
-	Code        string   `json:"-" form:"code"`
-	Symbols     []Symbol `json:"symbols" form:"-"`
-	Offset      uint32   `json:"-" form:"offset"`
-	Limit       uint32   `json:"-" form:"limit"`
-	LimitSet    bool     `json:"-" form:"-"`
-	Date        uint32   `json:"-" form:"date"`
-	Period      string   `json:"-" form:"period"`
-	Adjust      string   `json:"-" form:"adjust"`
-	BoardType   uint16   `json:"-" form:"-"`
-	BoardSymbol string   `json:"-" form:"board_symbol"`
-	Days        uint16   `json:"-" form:"days"`
+	Market            uint8    `json:"-" form:"market"`
+	MarketSet         bool     `json:"-" form:"-"`
+	Code              string   `json:"-" form:"code"`
+	Symbols           []Symbol `json:"symbols" form:"-"`
+	Offset            uint32   `json:"-" form:"offset"`
+	Limit             uint32   `json:"-" form:"limit"`
+	LimitSet          bool     `json:"-" form:"-"`
+	StartDate         uint64   `json:"-" form:"-"`
+	EndDate           uint64   `json:"-" form:"-"`
+	StartDateSetValue bool     `json:"-" form:"-"`
+	EndDateSetValue   bool     `json:"-" form:"-"`
+	StartDateText     string   `json:"-" form:"start_date"`
+	EndDateText       string   `json:"-" form:"end_date"`
+	Date              uint32   `json:"-" form:"date"`
+	Period            string   `json:"-" form:"period"`
+	Adjust            string   `json:"-" form:"adjust"`
+	BoardType         uint16   `json:"-" form:"-"`
+	BoardSymbol       string   `json:"-" form:"board_symbol"`
+	Days              uint16   `json:"-" form:"days"`
 }
+
+func (p Params) StartDateSet() bool { return p.StartDateSetValue }
+func (p Params) EndDateSet() bool   { return p.EndDateSetValue }
 
 type Symbol struct {
 	Market uint8  `json:"-"`
@@ -325,9 +335,17 @@ func call(c *clients, op string, p Params) (any, error) {
 	case "stock.quote":
 		return m.StockQuotes([]uint8{p.Market}, []string{p.Code})
 	case "stock.kline":
-		return m.StockKLine(periodValue(p.Period), p.Market, p.Code, uint16(p.Offset), uint16(p.Limit), 1, adjustValue(p.Adjust))
+		offset, limit, err := PlanBars(p.StartDate, p.EndDate, p.Period, time.Now())
+		if err != nil {
+			return nil, err
+		}
+		return m.StockKLine(periodValue(p.Period), p.Market, p.Code, uint16(offset), uint16(limit), 1, adjustValue(p.Adjust))
 	case "stock.index.bars":
-		return m.GetIndexBars(periodValue(p.Period), p.Market, p.Code, uint16(p.Offset), uint16(p.Limit))
+		offset, limit, err := PlanBars(p.StartDate, p.EndDate, p.Period, time.Now())
+		if err != nil {
+			return nil, err
+		}
+		return m.GetIndexBars(periodValue(p.Period), p.Market, p.Code, uint16(offset), uint16(limit))
 	case "stock.tick":
 		return m.StockTickChart(p.Market, p.Code, 0, uint16(p.Limit))
 	case "stock.tick.history":
@@ -386,7 +404,11 @@ func call(c *clients, op string, p Params) (any, error) {
 	case "mac.symbol.boards":
 		return mac.MACSymbolBelongBoard(p.Code, p.Market)
 	case "mac.symbol.bars":
-		return mac.MACSymbolBars(p.Market, p.Code, periodValue(p.Period), 1, p.Offset, p.Limit, adjustValue(p.Adjust))
+		offset, limit, err := PlanBars(p.StartDate, p.EndDate, p.Period, time.Now())
+		if err != nil {
+			return nil, err
+		}
+		return mac.MACSymbolBars(p.Market, p.Code, periodValue(p.Period), 1, offset, limit, adjustValue(p.Adjust))
 	default:
 		return nil, fmt.Errorf("未知操作: %s", op)
 	}

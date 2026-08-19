@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"reflect"
 	"regexp"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/resse/tdx-api/internal/boardcache"
@@ -109,6 +110,10 @@ func (s *Server) handle(rt route) gin.HandlerFunc {
 			return
 		}
 		applyDefaults(rt.Operation, &p)
+		if err := parseBarDates(&p); err != nil {
+			writeError(c, err)
+			return
+		}
 		if rt.Validate != nil {
 			if err := rt.Validate(p, s.cfg); err != nil {
 				writeError(c, err)
@@ -129,6 +134,9 @@ func (s *Server) handle(rt route) gin.HandlerFunc {
 		if err != nil {
 			writeError(c, err)
 			return
+		}
+		if rt.Operation == "stock.kline" || rt.Operation == "stock.index.bars" || rt.Operation == "mac.symbol.bars" {
+			data = tdx.FilterBars(data, p.StartDate, p.EndDate)
 		}
 		writeData(c, http.StatusOK, filterMainlandMarkets(data))
 	}
@@ -230,8 +238,11 @@ func validateBars(p tdx.Params, c config.Config) error {
 	if err := requireSymbol(p, c); err != nil {
 		return err
 	}
-	if err := validateLimit16(p, c); err != nil {
-		return err
+	if !p.StartDateSet() || !p.EndDateSet() || p.StartDate > p.EndDate {
+		return validation("start_date 和 end_date 必须是有效且有序的日期范围")
+	}
+	if _, _, err := tdx.PlanBars(p.StartDate, p.EndDate, p.Period, time.Now()); err != nil {
+		return validation("K 线日期范围超出允许跨度")
 	}
 	validPeriods := map[string]bool{"1m": true, "5m": true, "15m": true, "30m": true, "1h": true, "daily": true, "weekly": true, "monthly": true, "quarterly": true, "yearly": true}
 	if !validPeriods[p.Period] {
@@ -242,9 +253,49 @@ func validateBars(p tdx.Params, c config.Config) error {
 	}
 	return nil
 }
+
+func parseBarDates(p *tdx.Params) error {
+	if p.StartDateText == "" && p.EndDateText == "" {
+		return nil
+	}
+	parse := func(value string) (uint64, error) {
+		layout := "20060102"
+		if p.Period == "1m" || p.Period == "5m" || p.Period == "15m" || p.Period == "30m" || p.Period == "1h" {
+			layout = "20060102150405"
+		}
+		if len(value) != len(layout) {
+			return 0, validation("K 线日期格式必须为 YYYYMMDD 或 YYYYMMDDhhmmss")
+		}
+		date, err := time.ParseInLocation(layout, value, time.FixedZone("Asia/Shanghai", 8*60*60))
+		if err != nil || date.Year() < 1990 || date.Year() > 2100 {
+			return 0, validation("K 线日期格式或值无效")
+		}
+		var parsed uint64
+		if layout == "20060102" {
+			parsed = uint64(date.Year()*10000 + int(date.Month())*100 + date.Day())
+		} else {
+			parsed = uint64(date.Year())*10000000000 + uint64(date.Month())*100000000 + uint64(date.Day())*1000000 + uint64(date.Hour())*10000 + uint64(date.Minute())*100 + uint64(date.Second())
+		}
+		return parsed, nil
+	}
+	if p.StartDateText == "" || p.EndDateText == "" {
+		return validation("start_date 和 end_date 为必填参数")
+	}
+	start, err := parse(p.StartDateText)
+	if err != nil {
+		return err
+	}
+	end, err := parse(p.EndDateText)
+	if err != nil {
+		return err
+	}
+	p.StartDate, p.EndDate = start, end
+	p.StartDateSetValue, p.EndDateSetValue = true, true
+	return nil
+}
 func applyDefaults(operation string, p *tdx.Params) {
 	if !p.LimitSet {
-		defaults := map[string]uint32{"stock.list": 200, "stock.kline": 200, "stock.index.bars": 200, "stock.tick": 1000, "stock.auction": 500, "stock.unusual": 200, "stock.transactions": 600, "stock.transactions.history": 600, "mac.boards": 500, "mac.board.members": 500, "mac.board.quotes": 500, "mac.transactions": 500, "mac.auction": 500, "mac.monitor": 200, "mac.symbol.bars": 200}
+		defaults := map[string]uint32{"stock.list": 200, "stock.tick": 1000, "stock.auction": 500, "stock.unusual": 200, "stock.transactions": 600, "stock.transactions.history": 600, "mac.boards": 500, "mac.board.members": 500, "mac.board.quotes": 500, "mac.transactions": 500, "mac.auction": 500, "mac.monitor": 200}
 		p.Limit = defaults[operation]
 	}
 	if p.Period == "" {
